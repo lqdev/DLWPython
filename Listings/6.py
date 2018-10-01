@@ -343,3 +343,290 @@ Listing 6.18 Evaluating the model on the test set
 
 model.load_weights('pre_trained_glove_model.h5')
 model.evaluate(x_test, y_test)
+
+"""
+Listing 6.19 Pseudocode RNN
+"""
+
+# state_t = 0 # The state at t
+# for input_t in input_sequence: # Iterates over sequence elements
+#     output_t = f(input_t,state_t)
+#     state_t = output_t
+
+"""
+Listing 6.20 More detailed pseudocode for the RNN
+"""
+
+# state_t = 0
+# for input_t in input_sequence:
+#     output_t = activation(dot(W,input_t) + dot(U,state_t) + b)
+#     state_t = output_t
+
+"""
+Listing 6.21 Numpy implementation of a simple RNN
+"""
+
+import numpy as np
+
+timesteps = 1000 # Number of steps in the input sequence
+input_features = 32 # Dimensionality of the input feature space
+output_features = 64 # Dimensionality of the output feature space
+
+inputs = np.random.random((timesteps,input_features)) # Input data: random noise for the sake of the example
+
+state_t = np.zeros((output_features,)) # Initiali state: an all-zero vector
+
+# Create random weight matrices
+W = np.random.random((output_features,input_features))
+U = np.random.random((output_features,output_features))
+b = np.random.random((output_features,))
+
+successive_outputs = []
+for input_t in inputs: # input_t is a vector of shape (input_featurs,)
+    output_t = np.tanh(np.dot(W,input_t) + np.dot(U,state_t) + b) # Combines the input with the current state (the previous output) to obtain the current output
+
+    successive_outputs.append(output_t) # Stores this output in a list
+
+    state_t = output_t # Updates the state of the network for the next timestep
+
+final_output_sequence = np.concatenate(successive_outputs,axis=0) # The final output is a 2D tensor of shape (timesteps,output_features)
+
+"""
+Listing 6.22 Preparing the IMDB data
+"""
+
+from keras.datasets import imdb
+from keras.preprocessing import sequence
+
+max_features = 10000 # Number of words to consider as features
+maxlen = 500 # Cuts off texts after this many words (among the max_features of most common words)
+batch_size = 32
+
+print('Loading data...')
+(input_train,y_train),(input_test,y_test) = imdb.load_data(num_words=max_features)
+print(len(input_train),'train sequences')
+print(len(input_test),'test sequences')
+
+print('Pad sequences (samples x time)')
+input_train = sequence.pad_sequences(input_train,maxlen=maxlen)
+input_test = sequence.pad_sequences(input_test,maxlen=maxlen)
+print('input_train shape:',input_train.shape)
+print('input test shape:',input_test.shape)
+
+"""
+Listing 6.23 Training the model with Embedding and SimpleRNN layers
+"""
+
+from keras.models import Sequential
+from keras.layers import Dense, Embedding,SimpleRNN
+
+model = Sequential()
+model.add(Embedding(max_features,32))
+model.add(SimpleRNN(32))
+model.add(Dense(1,activation='sigmoid'))
+model.compile(optimizer='rmsprop',loss='binary_crossentropy',metrics=['acc'])
+history = model.fit(input_train,y_train,
+                    epochs=10,
+                    batch_size=128,
+                    validation_split=0.2)
+
+"""
+Listing 6.24 Plotting results
+"""
+
+import matplotlib.pyplot as plt
+
+acc = history.history['acc']
+val_acc = history.history['val_acc']
+loss = history.history['loss']
+val_loss = history.history['val_loss']
+
+epochs = range(1,len(acc) + 1)
+
+plt.plot(epochs,acc,'bo',label='Training acc')
+plt.plot(epochs,val_acc,'b',label='Validation acc')
+plt.title('Training and validationa accuracy')
+plt.legend()
+
+plt.figure()
+
+plt.plot(epochs,loss,'bo',label='Training loss')
+plt.plot(epochs,val_loss,'b',label='Validation loss')
+plt.title('Training and validationa loss')
+plt.legend()
+
+plt.show()
+
+"""
+Listing 6.25 Pseudocode details of the LSTM architecture (1/2)
+"""
+
+# output_t = activation(dot(state_t,Uo) = dot(input_t,Wo) + dot(C_t,Vo) + bo)
+
+# i_t = activation(dot(state_t,Ui) + dot(input_t,Wi) + bi)
+# f_t = activation(dot(state_t,Uf) + dot(input_t,Wf) + bf)
+# k_t = activation(dot(state_t,Uk) + dot(input_t,Wk) + bk)
+
+"""
+Listing 6.26 Pseudocode details of the LSTM architecture (2/2)
+"""
+
+# c_t+1 = i_t * k+t + c_t * f_t
+
+"""
+Listing 6.27 Using the LSTM layer in Keras
+"""
+
+from keras.layers import LSTM
+
+model = Sequential()
+model.add(Embedding(max_features,32))
+model.add(LSTM(32))
+model.add(Dense(1,activation='sigmoid'))
+model.compile(optimizer='rmsprop',loss='binary_crossentropy',metrics=['acc'])
+history = model.fit(input_train,y_train,epochs=10,batch_size=128,validation_split=0.2)
+
+# Added plotting logic 
+import matplotlib.pyplot as plt
+
+acc = history.history['acc']
+val_acc = history.history['val_acc']
+loss = history.history['loss']
+val_loss = history.history['val_loss']
+
+epochs = range(1,len(acc) + 1)
+
+plt.plot(epochs,acc,'bo',label='Training acc')
+plt.plot(epochs,val_acc,'b',label='Validation acc')
+plt.title('Training and validationa accuracy')
+plt.legend()
+
+plt.figure()
+
+plt.plot(epochs,loss,'bo',label='Training loss')
+plt.plot(epochs,val_loss,'b',label='Validation loss')
+plt.title('Training and validationa loss')
+plt.legend()
+
+plt.show()
+
+"""
+Listing 6.28 Inspecfing the data of the Jena weather dataset
+"""
+
+import os
+
+data_dir = "/home/lqdev/Downloads/jena_climate"
+fname = os.path.join(data_dir,'jena_climate_2009_2016.csv')
+
+f = open(fname)
+data = f.read()
+f.close()
+
+lines = data.split('\n')
+header = lines[0].split(',')
+lines = lines[1:]
+
+print(header)
+print(len(lines))
+
+"""
+Listing 6.29 Parsing the data
+"""
+
+import numpy as np
+
+float_data = np.zeros((len(lines),len(header)-1))
+for i,line in enumerate(lines):
+    values = [float(x) for x in line.split(',')[1:]]
+    float_data[i,:] = values
+
+"""
+6.30 Plotting the temperature timeseries
+"""
+
+import matplotlib.pyplot as plt
+
+temp = float_data[:,1]
+plt.plot(range(len(temp)),temp)
+plt.show()
+
+"""
+Listing 6.31 PLotting the first 10 days of the temperature timeseries
+"""
+
+plt.plot(range(1440),temp[:1440])
+plt.show()
+
+"""
+Listing 6.32 Normalizing the data
+"""
+
+mean = float_data[:200000].mean(axis=0)
+float_data -= mean
+std = float_data[:200000].std(axis=0)
+float_data /= std
+
+"""
+Listing 6.33 Generator yielding timeseries samples and their targets
+"""
+
+def generator(data,lookback,delay,min_index,max_index,shuffle=False,batch_size=128,step=6):
+    if max_index is None:
+        max_index = len(data) - delay - 1
+    i = min_index + lookback
+    while 1:
+        if shuffle:
+            rows = np.random.randint(min_index + lookback,max_index,size=batch_size)
+        else:
+            if i + batch_size >= max_index:
+                i = min_index + lookback
+            rows = np.arange(i,min(i + batch_size,max_index))
+            i += len(rows)
+        
+        samples = np.zeros((len(rows),lookback // step,data.shape[-1]))
+        targets = np.zeros((len(rows),))
+        for j,row in enumerate(rows):
+            indices = range(rows[j] - lookback,rows[j],step)
+            samples[j] = data[indices]
+            targets[j] = data[rows[j] + delay][1]
+        yield samples,targets
+
+"""
+Listing 6.34 Preparing the training, validation and test generators
+"""
+
+lookback = 1440
+step = 6
+delay = 144
+batch_size = 128
+
+train_generator = generator(float_data,
+                            lookback=lookback,
+                            delay=delay,
+                            min_index=0,
+                            max_index=200000,
+                            shuffle=True,
+                            step=step,
+                            batch_size=batch_size)
+
+val_generator = generator(float_data,
+                            lookback=lookback,
+                            delay=delay,
+                            min_index=200001,
+                            max_index=300000,
+                            shuffle=True,
+                            step=step,
+                            batch_size=batch_size)
+
+test_generator = generator(float_data,
+                            lookback=lookback,
+                            delay=delay,
+                            min_index=300001,
+                            max_index=None,
+                            shuffle=True,
+                            step=step,
+                            batch_size=batch_size)
+
+val_steps = (300000 - 200001 - lookback) # How many steps to draw from val_gen in order to see the entire validation set
+test_steps = (len(float_data) - 300001 - lookback) # How many steps to draw from test_gen in order to see the entire test set
