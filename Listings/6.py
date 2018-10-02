@@ -601,7 +601,7 @@ step = 6
 delay = 144
 batch_size = 128
 
-train_generator = generator(float_data,
+train_gen = generator(float_data,
                             lookback=lookback,
                             delay=delay,
                             min_index=0,
@@ -610,7 +610,7 @@ train_generator = generator(float_data,
                             step=step,
                             batch_size=batch_size)
 
-val_generator = generator(float_data,
+val_gen = generator(float_data,
                             lookback=lookback,
                             delay=delay,
                             min_index=200001,
@@ -619,7 +619,7 @@ val_generator = generator(float_data,
                             step=step,
                             batch_size=batch_size)
 
-test_generator = generator(float_data,
+test_gen = generator(float_data,
                             lookback=lookback,
                             delay=delay,
                             min_index=300001,
@@ -630,3 +630,46 @@ test_generator = generator(float_data,
 
 val_steps = (300000 - 200001 - lookback) # How many steps to draw from val_gen in order to see the entire validation set
 test_steps = (len(float_data) - 300001 - lookback) # How many steps to draw from test_gen in order to see the entire test set
+
+"""
+Listing 6.35 Computing the common-sense baseline MAE
+"""
+
+def evaluate_naive_method():
+    batch_maes = []
+    for step in range(val_steps):
+        print("On step ",step)
+        samples,targets = next(val_gen)
+        print(step)
+        preds = samples[:,-1,1]
+        mae = np.mean(np.abs(preds-targets))
+        batch_maes.append(mae)
+    print(np.mean(batch_maes))
+
+evaluate_naive_method()
+
+"""
+Listing 6.36 Converting the MAE back to Celcious error
+"""
+
+celsius_mae = 0.29 * std[1]
+
+"""
+Listing 6.37 Training and evaluating a densely connected model
+"""
+
+from keras.models import Sequential
+from keras import layers
+from keras.optimizers import RMSprop
+
+model = Sequential()
+model.add(layers.Flatten(input_shape=(lookback // step, float_data.shape[-1])))
+model.add(layers.Dense(32, activation='relu'))
+model.add(layers.Dense(1))
+model.compile(optimizer=RMSprop(),loss='mae')
+
+history = model.fit_generator(train_gen,
+                              steps_per_epoch=500,
+                              epochs=20,
+                              validation_data=val_gen,
+                              validation_steps=val_steps)
